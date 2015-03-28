@@ -34,6 +34,14 @@ func HandleFront(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	// Increase the views of the posts
+	incr := make(map[int][]string, 0)
+	for _, post := range posts {
+		incr[post.Id] = []string{r.RemoteAddr}
+	}
+	incrViewCountChan <- incr
+
 	html, err := buildHTML(posts)
 	if err != nil {
 		log.Println("Error in Handling / (build html): ", err)

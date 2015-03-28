@@ -19,11 +19,12 @@ type Post struct {
 	Title     string
 	Body      string
 	ViewCount int
+	Id        int
 }
 
-var incrViewCountChan chan []int
+var incrViewCountChan chan map[int][]string
 
-var viewCounts []int
+var viewCounts [][]string
 var viewCountsMutex sync.Mutex
 
 var postListing []Post
@@ -47,20 +48,40 @@ func getPostListing(path string) ([]Post, error) {
 	return pl, nil
 }
 
-func incrViewCounts(ids []int) {
+// Increases viewcouts, returns true if any changes were made
+func incrViewCounts(pairs map[int][]string) bool {
 	viewCountsMutex.Lock()
-	for _, v := range ids {
-		if v >= len(viewCounts) {
-			vc2 := make([]int, v+2)
-			copy(viewCounts, vc2)
-			viewCounts = vc2
+	changed := false
+	for id, sources := range pairs {
+		for _, addIp := range sources {
+			found := false
+
+			// Extend if needed
+			if len(viewCounts) <= id {
+				vc2 := make([][]string, id+1)
+				copy(vc2, viewCounts)
+				viewCounts = vc2
+				changed = true
+			}
+
+			for _, curIp := range viewCounts[id] {
+				if curIp == addIp {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				changed = true
+				viewCounts[id] = append(viewCounts[id], addIp)
+			}
 		}
-		viewCounts[v]++
 	}
 	viewCountsMutex.Unlock()
+	return changed
 }
 
-func saveViewCounts(counts []int) error {
+func saveViewCounts(counts [][]string) error {
 	serilalized, err := json.Marshal(counts)
 	if err != nil {
 		return err
@@ -69,14 +90,14 @@ func saveViewCounts(counts []int) error {
 	return err
 }
 
-func viewCounter(in chan []int) {
+func viewCounter(in chan map[int][]string) {
 	// Load viewcounts from disk
 	file, err := ioutil.ReadFile("counter.json")
 	if err != nil {
 		log.Println("ViewCounter: ", err)
 		log.Println("error loading existing counter, creating new counter...")
 		viewCountsMutex.Lock()
-		viewCounts = make([]int, 0)
+		viewCounts = make([][]string, 0)
 		viewCountsMutex.Unlock()
 	} else {
 		viewCountsMutex.Lock()
@@ -91,10 +112,12 @@ func viewCounter(in chan []int) {
 	for {
 		select {
 		case incr := <-in:
-			incrViewCounts(incr)
-			err = saveViewCounts(viewCounts)
-			if err != nil {
-				log.Println("ViewCounter: ", err)
+			changed := incrViewCounts(incr)
+			if changed {
+				err = saveViewCounts(viewCounts)
+				if err != nil {
+					log.Println("ViewCounter: ", err)
+				}
 			}
 		}
 
@@ -107,7 +130,6 @@ func getPosts(before, amount int) ([]Post, error) {
 	defer postListingLock.Unlock()
 
 	out := make([]Post, 0)
-	incrIds := make([]int, 0)
 	if before == -1 {
 		before = len(postListing) - 1
 	}
@@ -118,6 +140,8 @@ func getPosts(before, amount int) ([]Post, error) {
 		startPos = 0
 	}
 
+	viewCountsMutex.Lock()
+	defer viewCountsMutex.Unlock()
 	for i := before; i >= 0; i-- {
 		post := postListing[i]
 
@@ -127,7 +151,7 @@ func getPosts(before, amount int) ([]Post, error) {
 		}
 
 		if i < len(viewCounts) {
-			post.ViewCount = viewCounts[i]
+			post.ViewCount = len(viewCounts[i])
 		}
 
 		// Load the body from disk
@@ -137,13 +161,12 @@ func getPosts(before, amount int) ([]Post, error) {
 		}
 
 		post.Body = string(file)
+		post.Id = i
 		out = append(out, post)
-		incrIds = append(incrIds, i)
 		if len(out) > amount {
 			break
 		}
 	}
-	incrViewCountChan <- incrIds
 	return out, nil
 }
 
@@ -166,7 +189,7 @@ func postLister() {
 }
 
 func main() {
-	incrViewCountChan = make(chan []int, 10)
+	incrViewCountChan = make(chan map[int][]string, 10)
 	go viewCounter(incrViewCountChan)
 	go postLister()
 
