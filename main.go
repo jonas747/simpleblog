@@ -102,40 +102,47 @@ func viewCounter(in chan []int) {
 }
 
 // Get posts from before id(or most recent if id is -1)
-func getPosts(id, amount int) ([]Post, error) {
+func getPosts(before, amount int) ([]Post, error) {
 	postListingLock.Lock()
 	defer postListingLock.Unlock()
 
 	out := make([]Post, 0)
 	incrIds := make([]int, 0)
-	if id == -1 {
-		// most recent posts
-		lastPostId := len(postListing) - 1
-		startPos := lastPostId - amount
-		if startPos < 0 {
-			startPos = 0
+	if before == -1 {
+		before = len(postListing) - 1
+	}
+	// most recent posts
+	lastPostId := len(postListing) - 1
+	startPos := lastPostId - amount
+	if startPos < 0 {
+		startPos = 0
+	}
+
+	for i := before; i >= 0; i-- {
+		post := postListing[i]
+
+		if post.Path == "" {
+			// Skip...
+			continue
 		}
-		for i := startPos; i < len(postListing); i++ {
-			post := postListing[i]
-			if i < len(viewCounts) {
-				post.ViewCount = viewCounts[i]
-			}
 
-			// Load the body from disk
-			file, err := ioutil.ReadFile(post.Path)
-			if err != nil {
-				return []Post{}, err
-			}
+		if i < len(viewCounts) {
+			post.ViewCount = viewCounts[i]
+		}
 
-			post.Body = string(file)
-			out = append(out, post)
-			incrIds = append(incrIds, i)
-			if len(out) > amount {
-				break
-			}
+		// Load the body from disk
+		file, err := ioutil.ReadFile(post.Path)
+		if err != nil {
+			return []Post{}, err
+		}
+
+		post.Body = string(file)
+		out = append(out, post)
+		incrIds = append(incrIds, i)
+		if len(out) > amount {
+			break
 		}
 	}
-	// TODO: add posts from before id
 	incrViewCountChan <- incrIds
 	return out, nil
 }
