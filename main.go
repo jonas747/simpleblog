@@ -189,6 +189,7 @@ func postLister() {
 }
 
 func main() {
+	flag.Parse()
 	incrViewCountChan = make(chan map[int][]string, 10)
 	go viewCounter(incrViewCountChan)
 	go postLister()
@@ -213,5 +214,8 @@ func main() {
 
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets/"))))
 	http.HandleFunc("/", HandleFront)
-	http.ListenAndServe(*addr, nil)
+	err = http.ListenAndServe(*addr, nil)
+	if err != nil {
+		panic(err)
+	}
 }
