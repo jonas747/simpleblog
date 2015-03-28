@@ -5,6 +5,7 @@ import (
 	"github.com/russross/blackfriday"
 	"log"
 	"net/http"
+	"strings"
 )
 
 func buildHTML(posts []Post) ([]byte, error) {
@@ -37,8 +38,10 @@ func HandleFront(w http.ResponseWriter, r *http.Request) {
 
 	// Increase the views of the posts
 	incr := make(map[int][]string, 0)
+	li := strings.LastIndex(r.RemoteAddr, ":")
+	remote := r.RemoteAddr[:li]
 	for _, post := range posts {
-		incr[post.Id] = []string{r.RemoteAddr}
+		incr[post.Id] = []string{remote}
 	}
 	incrViewCountChan <- incr
 
