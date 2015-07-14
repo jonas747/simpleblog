@@ -1,0 +1,39 @@
+{{define "header"}}
+<html>
+	<head>
+		<title>Land o' jonas</title>
+		<link href="/static/github-markdown.css" media="all" rel="stylesheet" type="text/css" />
+		<link href="/static/jonas.css" media="all" rel="stylesheet" type="text/css" />
+		<link href="http://cdnjs.cloudflare.com/ajax/libs/octicons/2.1.2/octicons.css" media="all" rel="stylesheet" type="text/css" />
+	</head>
+	<body>
+		<div class="markdown-body content">
+
+	<h1>Land o' jonas!</h1>
+{{end}}
+
+{{define "footer"}}
+		</div>
+	</body>
+</html>
+{{end}}
+
+{{define "postspage"}}
+{{template "header" .}}
+
+{{range $index, $element := .Posts}}
+{{template "post" $element}}
+{{end}}
+
+{{template "footer" .}}
+{{end}}
+{{define "post"}}
+<div class="post">
+	<h1>{{.Title}}</h1>
+	<div class="post-info">	
+	<p>{{.Author}} - {{.Posted}} - viewed: --TODO-- times. ({{.Id}})</p>
+	</div>
+{{.HTML}}
+</div>
+{{end}} 
+

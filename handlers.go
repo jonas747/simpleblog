@@ -1,57 +1,47 @@
 package main
 
 import (
-	"bytes"
-	"github.com/russross/blackfriday"
+	"github.com/zenazn/goji/web"
 	"log"
 	"net/http"
-	"strings"
 )
 
-func buildHTML(posts []Post) ([]byte, error) {
-	var buf bytes.Buffer
-	for _, v := range posts {
-		err := postTemplate.Execute(&buf, v)
-		if err != nil {
-			return []byte{}, err
-		}
-	}
-	compiledMD := blackfriday.MarkdownCommon(buf.Bytes())
-
-	var finalHTML bytes.Buffer
-	err := mainTemplate.Execute(&finalHTML, string(compiledMD))
-
-	return finalHTML.Bytes(), err
+type HomeContent struct {
+	Posts []Post
+	Err   string
 }
 
-func HandleFront(w http.ResponseWriter, r *http.Request) {
-	if r.URL.String() != "/" {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	posts, err := getPosts(-1, 10)
+func commonResp(w http.ResponseWriter, tmpl string, data interface{}, status int) {
+	w.WriteHeader(status)
+
+	templatesMutex.RLock()
+	err := templates.ExecuteTemplate(w, tmpl, data)
 	if err != nil {
-		log.Println("Error in Handling / (getting posts): ", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		log.Println("Error executing template: ")
 	}
+	templatesMutex.RUnlock()
+}
 
-	// Increase the views of the posts
-	incr := make(map[int][]string, 0)
-	li := strings.LastIndex(r.RemoteAddr, ":")
-	remote := r.RemoteAddr[:li]
-	for _, post := range posts {
-		incr[post.Id] = []string{remote}
-	}
-	incrViewCountChan <- incr
+func handleHome(c web.C, w http.ResponseWriter, r *http.Request) {
+	content := HomeContent{}
 
-	html, err := buildHTML(posts)
+	// Get the 5 latest posts
+	p, err := getPosts(-1, 5)
+
 	if err != nil {
-		log.Println("Error in Handling / (build html): ", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		content.Err = err.Error()
+		commonResp(w, "postspage", content, http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write(html)
+	content.Posts = p
+	commonResp(w, "postspage", content, http.StatusOK)
+}
+
+func handleViewPost(c web.C, w http.ResponseWriter, r *http.Request) {
+
+}
+
+func handleViewBefore(c web.C, w http.ResponseWriter, r *http.Request) {
+
 }

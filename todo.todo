@@ -1,0 +1,13 @@
+Moving to goji and redis:
+  ✘ Use redis as post and visited ip storage @cancelled (15-07-14 00:02)
+  ✔ Revert back to filesystem for storage @done (15-07-14 16:29)
+  
+  Webpages to view posts:
+    ✔ (/) Standard frontpage with latest posts @done (15-07-14 16:29)
+    ☐ (/post/{postid}) display only that post
+    ☐ (/before/{postid}) display posts before that postid
+  Webpages to edit and post posts:
+    ✘ /edit/{postid} @cancelled (15-07-14 00:02)
+      if postif is -1 we create a new post
+    ✔ Instead use git to push posts @done (15-07-14 15:26)
+      Has the added benefit of version controll
