@@ -4,7 +4,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/shurcooL/github_flavored_markdown"
+	//"github.com/shurcooL/github_flavored_markdown"
+	"github.com/russross/blackfriday"
 	"github.com/zenazn/goji"
 	"html/template"
 	"io/ioutil"
@@ -115,7 +116,9 @@ func getPost(id int) (Post, error) {
 }
 
 func compileMarkdown(md string) string {
-	out := github_flavored_markdown.Markdown([]byte(md))
+	out := blackfriday.MarkdownCommon([]byte(md))
+
+	//out := github_flavored_markdown.Markdown([]byte(md))
 	return string(out)
 }
 

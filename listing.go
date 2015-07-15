@@ -82,7 +82,6 @@ func intervalUpdater(interval time.Duration, stop chan bool) {
 			if nl != nil {
 				mainListing.Mutex.Lock()
 				mainListing.Posts = nl.Posts
-				log.Println("Updated listing, length: ", len(mainListing.Posts))
 				mainListing.Mutex.Unlock()
 			}
 
